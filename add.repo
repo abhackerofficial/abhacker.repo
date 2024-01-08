@@ -1,0 +1,282 @@
+#!/usr/bin/env bash
+
+export PREFIX="/data/data/com.termux/files/usr"
+export REPO_DIR=$"$PREFIX/etc/apt/sources.list.d/abhacker.repo.list"
+export PACKAGE=$"${PREFIX}/share/gnupg"
+export APT_DIR="${PREFIX}/etc/apt"
+export SOURCES_LIST="${APT_DIR}/sources.list.d"
+export PREFIX="${PREFIX}"
+export PUB_DIR=$"$PREFIX/etc/apt/trusted.gpg"
+export TERMUX=$(uname -o | grep -o "Android")
+export ARCH=`dpkg --print-architecture`
+export TMPDIR="${PREFIX}/tmp"
+
+W="\e[38;2;255;255;255m"
+O="\e[93m"
+
+if [[ $TERMUX != *'Android'* ]];then
+echo "Sorry, but your system doesn't support !"
+# if you're removed that lines I don't know what happens to you !
+exit 1
+fi
+
+# interrupter management
+exit_on_signal_SIGINT () {
+  { error=$(echo $?)
+
+    code[0]="^"
+    code[1]="~"
+
+i=0
+
+if [ ${error} -gt "0" ];then
+printf "\n\e[91mProgram interrupted. with \e[0m‘${error}’\e[91m Code.\e[0m\n"
+     printf "                          "
+printf "\e[1;92m${code[0]}"
+else
+printf "\n\e[91mProgram interrupted. with \e[0m‘${error}’\e[91m Code.\e[0m\n"
+   exit 0
+fi
+
+while [ $i -le ${#error} ]
+do
+  printf "${code[1]}"
+((i++))
+done
+
+printf "\e[0m\n" ;2>&1;}
+   exit 0
+}
+
+trap exit_on_signal_SIGINT SIGINT
+
+connection() {
+#wget -q --spider http://google.com
+curl -Is http://www.google.com &> /dev/null
+}
+
+true() {
+printf "\r\e[93m[Connecting to github.io]... "
+}
+false() {
+printf "\r\e[93m[Connecting to github.io]... "
+sleep 0.5
+printf "\e[91m[Failed connect to github.io]...\n"
+connection || printf "\e[91m); Connection error code : $?\n"
+}
+
+connections() {
+connection
+if [[ $? -eq 0 ]];then
+connection | true
+else
+connection | false
+exit
+fi
+}
+
+connections
+
+if [ ! -e "${SOURCES_LIST}" ]; then
+    mkdir -p "${SOURCES_LIST}"
+fi
+
+#if [ -z "${TMPDIR}" ]; then
+#    TMPDIR="${PREFIX}/tmp"
+#fi
+
+if [ ! -e "${TMPDIR}" ]; then
+    mkdir -p "${TMPDIR}"
+fi
+
+if [ ! -d "$PACKAGE" ];then
+    echo -e "\nInstalling dependencies..."
+    apt update ; apt upgrade -y ; apt install gnupg -y
+fi
+
+# Download signed key
+sleep 0.1
+   printf "\r\e[93m[Connecting to github.io]... "
+sleep 0.6
+   printf "[Connected to github.io]..."
+sleep 0.3
+echo -en "\033[?25l"
+   printf "\r\e[93m                                                            "
+echo -en "\033[?12l\033[?25h"
+   printf "\rRetrieving informations [${W}${ARCH}${O}]..."
+sleep 0.3
+
+grep -q "abhackerofficial@gmail.com" $PUB_DIR &> /dev/null
+if [ $? != 0 ]; then
+sleep 0.4
+   echo -en "\033[?25l"
+printf "\r\e[93m                                                               "
+   echo -en "\033[?12l\033[?25h"
+printf "\r\e[93mAdding Public GPG Key [${W}${ARCH}${O}]... "
+   curl -fsSL https://abhackerofficial.github.io/abhacker.repo/abhacker.repo.key | apt-key add &> /dev/null &
+printf "OK"
+fi
+
+if [ ! -f "$PREFIX/etc/raw_keys" ];then
+mkdir -p ${PREFIX}/etc/raw_keys
+fi
+
+if [ ! -f "$PREFIX/etc/raw_keys/abhacker.repo.key" ];then
+curl -fsSL https://github.com/abhackerofficial/abhacker.repo/raw/master/abhacker.repo.key | cat &> ${PREFIX}/etc/raw_keys/abhacker.repo.key &
+fi
+
+get1=`curl -fsSL https://github.com/abhackerofficial/abhacker.repo/raw/master/abhacker.repo.key | awk NR==3 &`
+get2=`cat $PREFIX/etc/raw_keys/abhacker.repo.key | awk NR==3`
+
+if [[ ${get1} != ${get2} ]];then
+sleep 0.4
+   echo -en "\033[?25l"
+printf "\r\e[93m                                                               "
+   echo -en "\033[?12l\033[?25h"
+printf "\r\e[93mAdding Public GPG Key [${W}${ARCH}${O}]... "
+curl -fsSL https://github.com/abhackerofficial/abhacker.repo/raw/master/abhacker.repo.key | cat &> ${PREFIX}/etc/raw_keys/abhacker.repo.key &
+  curl -fsSL https://github.com/abhackerofficial/abhacker.repo/raw/master/abhacker.repo.key | apt-key add &> /dev/null
+ printf "OK"
+else
+ printf "\r\e[93mPublic GPG Key Already exists [${W}${ARCH}${O}]..."
+fi
+
+aarch64_architecture()
+{
+printf "# abhacker's repository\ndeb [arch=all,aarch64] https://abhackerofficial.github.io/abhacker.repo/ abhacker main" > "${SOURCES_LIST}/abhacker.repo.list"
+}
+
+arm_architecture()
+{
+printf "# abhacker's repository\ndeb [arch=all,arm] https://abhackerofficial.github.io/abhacker.repo/ abhacker main" > "${SOURCES_LIST}/abhacker.repo.list"
+}
+
+i686_architecture()
+{
+printf "# abhacker's repository\ndeb [arch=all,i686] https://abhackerofficial.github.io/abhacker.repo/ abhacker main" > "${SOURCES_LIST}/abhacker.repo.list"
+}
+
+x86_64_architecture()
+{
+printf "# abhacker's repository\ndeb [arch=all,x86_64] https://abhackerofficial.github.io/abhacker.repo/ abhacker main" > "${SOURCES_LIST}/abhacker.repo.list"
+}
+
+
+# abhacker's repository
+if [ -f "$REPO_DIR" ];then
+sleep 0.5
+printf "\r\e[93mABHacker's Repository Already exists [${W}${ARCH}${O}]..."
+else
+printf "\r\e[93mAdding ABHacker's Repository [${W}${ARCH}${O}]... "
+sleep 0.5
+printf "OK"
+case "$ARCH" in
+    aarch64)
+        aarch64_architecture
+        ;;
+    arm)
+        arm_architecture
+        ;;
+    armhf)
+        arm_architecture
+        ;;
+    i686)
+        i686_architecture
+        ;;
+    x86_64)
+        x86_64_architecture
+        ;;
+esac
+fi
+
+sleep 0.7
+printf "\r\e[93mUpdating Termux emulator [${W}${ARCH}${O}]...              \n\e[0m"
+apt-get update
+echo -e "\e[94mInstall package  : apt install <pkg> ..."
+echo -e "GitHub help page : https://github.com/abhackerofficial/abhacker.repo\e[0m"
+
+# arguments management
+if [[ ${1} == "--update" || ${1} == "-u" ]];then
+  if [[ ${#2} -gt "0" ]];then
+ apt upgrade "${@:2}"
+exit
+  fi
+
+elif [[ ${1} == "--list" || ${1} == "-l" ]];then
+list() {
+ apt list | grep -a "abhacker" | head -n -0
+}
+ printf "`list`\n" | cut -d ":" -f 2
+exit
+
+elif [[ ${1} == "--show" || ${1} == "-s" ]];then
+  if [[ ${#2} -gt "0" ]];then
+  apt search "${@:2}"
+exit
+  fi
+
+elif [[ ${1} == "--remove" || ${1} == "-r" ]];then
+  if [[ ${#2} -gt "0" ]];then
+  apt autoremove "${@:2}"
+exit
+  fi
+
+elif [[ ${1} == "--addon" || ${1} == "-a" ]];then
+  if [[ ${2} == "http://"* || ${2} == "https://"* ]];then
+  printf "\n\e[93mGetting your Program !...\n\e[0m"
+  bash <(curl -fsSL "${2}") ${@:3}
+  echo -e "\e[93mProgram Ended with \e[0m‘${?}’ \e[93mCode.\n\e[0m"
+exit
+else
+  echo -e "\e[92mInvalid Url Address : \e[91m${2}\e[0m"
+exit
+  fi
+
+elif [[ ${1} == "--eval" || ${1} == "-e" ]];then
+  if [[ ${2} == "eval"* ]];then
+  printf "\n\e[93mGetting your Program !...\n\e[0m"
+  eval ${@:3}
+  echo -e "\e[93mProgram Ended with \e[0m‘${?}’ \e[93mCode.\n\e[0m"
+else
+  echo -e "\e[92mInvalid ‘eval’ script : \e[91m${2}\e[0m"
+  fi
+fi
+
+function arguments() {
+    for i in "${arry[@]}" ; do
+        ((++control))
+        if [ "$i" = "--run" ]; then
+            break
+        fi
+        if [ ! "$i" = "--install" ]; then
+            package+=($i)
+        fi
+    done
+
+    for ((i=$control; i<$MAXLEN; i++)); do
+        ((++control))
+        if [ ${arry[$i]} = "--run" ]; then
+            break
+        fi
+        command+=(${arry[$i]})
+    done
+
+if [[ ${#package[@]} -gt "0" ]];then
+    apt install -y ${package[@]}
+fi
+
+if [[ ${#command[@]} -gt "0" ]];then
+      ${command[@]}
+fi
+}
+
+arry=("$@")
+if [ ! ${arry[0]} = "--install" ]; then
+    exit
+fi
+
+package=()
+command=()
+control=0
+MAXLEN=$#
+arguments
